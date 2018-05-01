@@ -25,7 +25,7 @@ int currpin=0;
 int blank=0;
 int digit=0;
 char number='#';
-char *pin;
+int pin;
 
 void Init(){
     TRISA = 0xFF;
@@ -56,7 +56,9 @@ void interrupt mainISR(){
             ADCON0bits.GO = 1;
         }
         if ((tmr0helper%50==0)&&state==1){
-            WriteCommandToLCD(0x8B+currpin);
+            if(currpin!=4){
+                WriteCommandToLCD(0x8B+currpin);
+            }
             if(blank){
                 WriteDataToLCD(digit+48);
                 blank=0;
@@ -68,10 +70,19 @@ void interrupt mainISR(){
         }
         if(tmr0helper==100&&state==2){
             tmr0helper=0;
-        }
+            if(blank){
+                WriteStringToLCD(" The new pin is ");
+                WriteCommandToLCD(0xC0);  
+                WriteStringToLCD("   ---");
+                WriteStringToLCD(pin);
+                WriteStringToLCD("---   ");
+                }
+            else{
+                ClearLCDScreen();}
+            }
         
     }
-    else if(TMR1IF){
+    if(TMR1IF){
         TMR1IF=0;
         TMR1 = 0x0BDC;
         if(state==3){
@@ -82,15 +93,19 @@ void interrupt mainISR(){
             }
         }
     }
-    else if(RBIF){
+    if(INTCONbits.RBIF){
         RBIF=0;
         /*rb6&rb7 isr code*/
-        pin = 10^(3-currpin)+digit;
-        if(currpin!=3){
-            currpin+=1;}
-        
+        if(PORTBbits.RB6){
+            pin = 10^(3-currpin)+digit;
+            if(currpin!=4){
+                currpin+=1;}
+        }
+        if(PORTBbits.RB7&&(currpin==4)){
+            state=2;
+        }
     }
-    else if(PIR1bits.ADIF){
+    if(PIR1bits.ADIF){
         ADIF=0;
         /*adcon code*/
         digit = ADRESL|(ADRESH<<8);
@@ -151,7 +166,6 @@ int main(int argc, char** argv) {
     RBIE = 1;
     ei();
     while(1){
-        
     }
     
 }
