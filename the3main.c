@@ -28,6 +28,8 @@ char number='#';
 char *pin;
 
 void Init(){
+    TRISA = 0xFF;
+    TRISF = 0xFF;
     PORTE = 0;
     PORTB = 0;
     TRISB = 0xC0;
@@ -40,7 +42,7 @@ void Init(){
     IPR1 = 0;
     ADCON0 = 0x31;
     ADCON1 = 0;
-    ADCON2 = 0x8A;
+    ADCON2 = 0x0A;
     return;
 }
 
@@ -56,7 +58,7 @@ void interrupt mainISR(){
         if ((tmr0helper%50==0)&&state==1){
             WriteCommandToLCD(0x8B+currpin);
             if(blank){
-                WriteDataToLCD(number);
+                WriteDataToLCD(digit+48);
                 blank=0;
             }
             else{
@@ -83,42 +85,25 @@ void interrupt mainISR(){
     else if(RBIF){
         RBIF=0;
         /*rb6&rb7 isr code*/
+        pin = 10^(3-currpin)+digit;
+        if(currpin!=3){
+            currpin+=1;}
+        
     }
     else if(PIR1bits.ADIF){
         ADIF=0;
         /*adcon code*/
         digit = ADRESL|(ADRESH<<8);
-        digit = (digit-99);
-        if(digit<100){
-            digit=0;
-        }
-        else if(99<digit<200){
-            digit=1;
-        }
-        else if(199<digit<300){
-            digit=2;
-        }
-        else if(299<digit<400){
-            digit=3;
-        }
-        else if(399<digit<500){
-            digit=4;
-        }
-        else if(499<digit<600){
-            digit=5;
-        }
-        else if(599<digit<700){
-            digit=6;
-        }
-        else if(699<digit<800){
-            digit=7;
-        }
-        else if(799<digit<900){
-            digit=8;
-        }
-        else if(899<digit<1024){
-            digit=9;
-        }
+        if(digit<100){digit=0;}
+        else if(digit<200){digit=1;}
+        else if(digit<300){digit=2;}
+        else if(digit<400){digit=3;}
+        else if(digit<500){digit=4;}
+        else if(digit<600){digit=5;}
+        else if(digit<700){digit=6;}
+        else if(digit<800){digit=7;}
+        else if(digit<900){digit=8;}
+        else{digit=9;}
         debug=1;
     }
 }
@@ -163,6 +148,7 @@ int main(int argc, char** argv) {
     T1CON = 0xF9;
     ADIF = 0;
     ADIE = 1;
+    RBIE = 1;
     ei();
     while(1){
         
