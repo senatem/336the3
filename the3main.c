@@ -16,6 +16,14 @@
 #include "Includes.h"
 #include "LCD.h"
 
+#define tl1 RH0
+#define tl2 RH1
+#define tl3 RH2
+#define tl4 RH3
+
+unsigned int const lookup[10] = {0x3F,0x06,0x5B,0x4F,0x66,0x6D,0x7D,0x07,0x7F,0x6F};
+int flag;
+
 int state = 0;
 int buttonSet = 0;
 int debug=0;
@@ -46,6 +54,37 @@ void Init(){
     return;
 }
 
+void sevenseg(int flag){
+    int a,b,c,d,e,f,g,h,timeleft=120;
+    if(flag==0){
+        PORTJ=64;
+        tl1=1;
+    }
+    else{
+        a=timeleft%10;//4th digit is saved here
+        b=timeleft/10;
+        c=b%10;//3rd digit is saved here
+        d=b/10;
+        e=d%10; //2nd digit is saved here
+        f=d/10;
+        g=f%10; //1st digit is saved here
+        h=f/10;
+        
+        PORTJ=lookup[g];
+        tl1=1;
+        
+        PORTJ=lookup[e];
+        tl2=1;
+    
+        PORTJ=lookup[c];
+        tl3=1;
+
+        PORTJ=lookup[a];
+        tl4=1; 
+ 
+    }
+}
+
 void interrupt mainISR(){
     if(TMR0IF){
         TMR0IF=0;
@@ -56,8 +95,8 @@ void interrupt mainISR(){
             ADCON0bits.GO = 1;
         }
         if ((tmr0helper%50==0)&&state==1){
-            if(currpin!=4){
-                WriteCommandToLCD(0x8B+currpin);
+            if(currpin!=8){
+                WriteCommandToLCD(0x8B+currpin/2);
             }
             if(blank){
                 WriteDataToLCD(digit+48);
@@ -68,8 +107,7 @@ void interrupt mainISR(){
                 blank=1;
             }
         }
-        if(tmr0helper==100&&state==2){
-            tmr0helper=0;
+        if(tmr0helper==100){
             if(blank){
                 WriteStringToLCD(" The new pin is ");
                 WriteCommandToLCD(0xC0);  
@@ -79,32 +117,40 @@ void interrupt mainISR(){
                 }
             else{
                 ClearLCDScreen();}
+            tmr0helper=0;
             }
-        
     }
     if(TMR1IF){
         TMR1IF=0;
         TMR1 = 0x0BDC;
+        PORTJ=64;
+        tl1=1;
+        tl2=1;
+        tl3=1;
+        tl4=1;
         if(state==3){
             tmr1helper+=1;
             if(tmr1helper==20){
                 tmr1helper=0;
                 /*7-segment update code*/
+                
             }
         }
     }
     if(INTCONbits.RBIF){
         RBIF=0;
         /*rb6&rb7 isr code*/
-        if(PORTBbits.RB6){
-            for(int i=0;i++;i<(3-currpin)){
+        if(!PORTBbits.RB6){
+            WriteCommandToLCD(0x8B+currpin/2);
+            WriteDataToLCD(digit+48);
+            for(int i=0;i++;i<(3-currpin/2)){
                 digit=digit*10;
             }
             pin = pin+digit;
-            if(currpin!=4){
+            if(currpin!=8){
                 currpin+=1;}
         }
-        if(PORTBbits.RB7&&(currpin==4)){
+        if(PORTBbits.RB7&&(currpin==8)){
             state=2;
         }
     }
@@ -161,7 +207,8 @@ int main(int argc, char** argv) {
     WriteCommandToLCD(0x80);
     WriteStringToLCD(" Set a pin:#### ");
     TMR0L = 0x3D;
-    TMR1 = 0x0BDC;
+    TMR1L = 0xDC;
+    TMR1H = 0x0B;
     T0CON = 0xC7;
     T1CON = 0xF9;
     ADIF = 0;
