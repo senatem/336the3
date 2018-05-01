@@ -97,7 +97,10 @@ void interrupt mainISR(){
         RBIF=0;
         /*rb6&rb7 isr code*/
         if(PORTBbits.RB6){
-            pin = 10^(3-currpin)+digit;
+            for(int i=0;i++;i<(3-currpin)){
+                digit=digit*10;
+            }
+            pin = pin+digit;
             if(currpin!=4){
                 currpin+=1;}
         }
