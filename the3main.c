@@ -1,7 +1,17 @@
 /* 
  * File:   the3main.c
- * Author: Sena Temucin
+ * 2036192 Sena Temucin
+ * 1881556 Yasir Tosun
  *
+ * We designed a state machine to control the work flow
+ * of the program. We used Timer0 and Timer1 interrupts for time-based
+ * operations. We configured the analog to digital converter and planned the
+ * ADC ISR to work as described in the homework text. We used the LCD.c, LCD.h,
+ * and Includes.h files shared in the recitation to configure and use the LCD.
+ * 
+ * There is a little bug where during pin setting and pin entry modes the last digit
+ * sometimes appears twice. 
+ * 
  * Created on April 22, 2018, 5:29 PM
  */
 
@@ -196,6 +206,9 @@ void interrupt mainISR(){
             if((pin[currpin/2])==digit){test+=1;}
             if(currpin<7){
                 currpin+=1;}
+            if(currpin>7){
+                currpin=7;
+            }
         }
         if((!PORTBbits.RB7)&&(currpin>6)&&(state==1)){      //Finish pin setting
             state=2;
