@@ -33,7 +33,11 @@ int currpin=0;
 int blank=0;
 int digit=0;
 char number='#';
-int pin;
+int pin[4];
+int msgblink=0;
+int a,b,c,d,e,f,g,h,timeleft=120;
+
+
 
 void Init(){
     TRISA = 0xFF;
@@ -50,39 +54,8 @@ void Init(){
     IPR1 = 0;
     ADCON0 = 0x31;
     ADCON1 = 0;
-    ADCON2 = 0x0A;
+    ADCON2 = 0x1A;
     return;
-}
-
-void sevenseg(int flag){
-    int a,b,c,d,e,f,g,h,timeleft=120;
-    if(flag==0){
-        PORTJ=64;
-        tl1=1;
-    }
-    else{
-        a=timeleft%10;//4th digit is saved here
-        b=timeleft/10;
-        c=b%10;//3rd digit is saved here
-        d=b/10;
-        e=d%10; //2nd digit is saved here
-        f=d/10;
-        g=f%10; //1st digit is saved here
-        h=f/10;
-        
-        PORTJ=lookup[g];
-        tl1=1;
-        
-        PORTJ=lookup[e];
-        tl2=1;
-    
-        PORTJ=lookup[c];
-        tl3=1;
-
-        PORTJ=lookup[a];
-        tl4=1; 
- 
-    }
 }
 
 void interrupt mainISR(){
@@ -95,7 +68,7 @@ void interrupt mainISR(){
             ADCON0bits.GO = 1;
         }
         if ((tmr0helper%50==0)&&state==1){
-            if(currpin!=8){
+            if(currpin<7){
                 WriteCommandToLCD(0x8B+currpin/2);
             }
             if(blank){
@@ -107,32 +80,63 @@ void interrupt mainISR(){
                 blank=1;
             }
         }
-        if(tmr0helper==100){
+        if((tmr0helper%100==0)&&(state==2)){
             if(blank){
                 WriteStringToLCD(" The new pin is ");
                 WriteCommandToLCD(0xC0);  
                 WriteStringToLCD("   ---");
-                WriteStringToLCD(pin);
+                WriteDataToLCD(pin[0]+48);
+                WriteDataToLCD(pin[1]+48);
+                WriteDataToLCD(pin[2]+48);
+                WriteDataToLCD(pin[3]+48);
                 WriteStringToLCD("---   ");
+                blank=0;
                 }
             else{
-                ClearLCDScreen();}
+                ClearLCDScreen();
+                blank=1;}
+            msgblink+=1;
+            if(msgblink==6){state=3;}
             tmr0helper=0;
             }
     }
     if(TMR1IF){
         TMR1IF=0;
         TMR1 = 0x0BDC;
-        PORTJ=64;
-        tl1=1;
-        tl2=1;
-        tl3=1;
-        tl4=1;
-        if(state==3){
+        if(state<3){
+            PORTJ=64;
+            tl1=1;
+            tl2=1;
+            tl3=1;
+            tl4=1;
+        }
+        else if(state==3){
             tmr1helper+=1;
+            PORTJ=lookup[g];
+            tl1=1;
+            
+            PORTJ=lookup[e];
+            tl2=1;
+
+            PORTJ=lookup[c];
+            tl3=1;
+
+            PORTJ=lookup[a];
+            tl4=1;
+        
             if(tmr1helper==20){
+                timeleft-=1;
                 tmr1helper=0;
                 /*7-segment update code*/
+                a=timeleft%10;//4th digit is saved here
+                b=timeleft/10;
+                c=b%10;//3rd digit is saved here
+                d=b/10;
+                e=d%10; //2nd digit is saved here
+                f=d/10;
+                g=f%10; //1st digit is saved here
+                h=f/10;
+
                 
             }
         }
@@ -143,14 +147,11 @@ void interrupt mainISR(){
         if(!PORTBbits.RB6){
             WriteCommandToLCD(0x8B+currpin/2);
             WriteDataToLCD(digit+48);
-            for(int i=0;i++;i<(3-currpin/2)){
-                digit=digit*10;
-            }
-            pin = pin+digit;
-            if(currpin!=8){
+            pin[currpin/2] = digit;
+            if(currpin!=7){
                 currpin+=1;}
         }
-        if(PORTBbits.RB7&&(currpin==8)){
+        if(!PORTBbits.RB7&&(currpin>6)){
             state=2;
         }
     }
